@@ -1,0 +1,29 @@
+# Environment & Secrets (NEVER commit .env or credentials)
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+*.db
+*.sqlite3
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.vite/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.log

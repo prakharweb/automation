@@ -1,0 +1,82 @@
+# ============================================================================
+# Space Consultant – Meta Ads + DoubleTick Lead Automation Platform
+# Render Blueprint Specification (render.yaml)
+# Supports:
+# 1. FastAPI Web Service (bound to 0.0.0.0:$PORT with /api/health check)
+# 2. Persistent Cron Job / Background Worker for 24h & 72h Follow-up Automation
+# Note on Render Free Tier: Free web instances spin down after 15 minutes of
+# inactivity and do not have persistent local disk. Using Neon PostgreSQL
+# ensures 100% persistent state for leads, webhook events, and followup_jobs.
+# ============================================================================
+
+services:
+  # 1. Primary FastAPI Backend Web Service
+  - type: web
+    name: space-consultant-lead-automation-api
+    runtime: python
+    rootDir: backend
+    plan: starter # Can be changed to 'free' for evaluation (see README for free-tier spin-down notes)
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # Set to Neon PostgreSQL URI: postgresql://user:pass@ep-xyz.neon.tech/space_consultant?sslmode=require
+      - key: DB_SSL_REQUIRE
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false # Set to https://your-netlify-site.netlify.app
+      - key: INITIAL_ADMIN_EMAIL
+        value: admin@spaceconsultant.in
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_VERIFY_TOKEN
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: META_GRAPH_API_VERSION
+        value: v21.0
+      - key: DOUBLETICK_API_KEY
+        sync: false
+      - key: DOUBLETICK_SENDER
+        sync: false
+      - key: DOUBLETICK_WEBHOOK_SECRET
+        sync: false
+      - key: FOLLOWUP_WORKER_ENABLED
+        value: "true"
+      - key: AI_REPLY_ENABLED
+        value: "false"
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # 2. Persistent Follow-up Cron Worker (Executes every 15 minutes against Neon PostgreSQL)
+  - type: cron
+    name: space-consultant-followup-cron
+    runtime: python
+    rootDir: backend
+    schedule: "*/15 * * * *"
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: python -m app.workers.followup_worker --once
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DOUBLETICK_API_KEY
+        sync: false
+      - key: DOUBLETICK_SENDER
+        sync: false
